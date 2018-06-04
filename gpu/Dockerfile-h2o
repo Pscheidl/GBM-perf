@@ -16,6 +16,8 @@ RUN R CMD javareconf
 
 ENV MAKE="make -j$(nproc)"
 
+
+
 RUN R -e 'install.packages(c("ROCR","data.table","R6"), repos = c(CRAN = "https://cran.rstudio.com/"))'
 
 RUN wget https://s3.amazonaws.com/benchm-ml--main/train-0.1m.csv && \
@@ -24,11 +26,16 @@ RUN wget https://s3.amazonaws.com/benchm-ml--main/train-0.1m.csv && \
     wget https://s3.amazonaws.com/benchm-ml--main/test.csv
 
 
+RUN wget http://h2o-release.s3.amazonaws.com/h2o/master/4314/h2o-3.19.0.4314.zip && \
+    unzip h2o-3.19.0.4314.zip && \
+    mv h2o-3.19.0.4314/h2o.jar /h2o.jar
 
-ARG CACHE_DATE=2018-06-02
 
 RUN R -e 'install.packages("h2o", repos = c(CRAN = "https://cran.rstudio.com/"))'
 
+ARG CACHE_DATE=2018-06-02
+
+RUN ls /
 
 ADD https://api.github.com/repos/szilard/GBM-perf/git/refs/heads/master version.json
 ## ^^^ hack to invalidate docker cache if repo gets updated
@@ -36,10 +43,16 @@ RUN git clone https://github.com/szilard/GBM-perf.git
 
 RUN  apt-get clean && rm -rf /var/lib/apt/lists/*
 
+COPY run/1-h2o.R GBM-perf/gpu/run
 
-CMD cd GBM-perf/gpu/run && \
+RUN mkdir h2ologs/
+
+
+CMD nohup java -jar h2o.jar &1>h2ologs/h2olog && \
+    sleep 5 && \
+    cd GBM-perf/gpu/run && \
     ln -s /test.csv test.csv && \
-    ln -sf /train-0.1m.csv train.csv && \
+    ln -sf /train-0.1m.csv /train.csv && \
     echo "0.1m:" && \
       echo -n "h2o " && R --slave < 1-h2o.R && \
       #echo -n "xgboost " && R --slave < 2-xgboost.R && \

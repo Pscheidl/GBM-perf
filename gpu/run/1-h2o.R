@@ -3,7 +3,7 @@ library(h2o)
 })
 
 sink("/dev/null") 
-h2o.init()
+h2o.init(strict_version_check = FALSE, startH2O = FALSE)
 sink()
 h2o.no_progress()
 
